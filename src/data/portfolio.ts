@@ -1,56 +1,58 @@
 export const portfolio = {
 	profile: {
 		name: "Your Name",
-		role: "Creative Professional",
-		tagline: "Build a portfolio landing page that is clean, fast, and easy to customize.",
+		role: "Frontend Developer",
+		tagline: "Fresh graduate who builds clean, fast, and human-friendly web interfaces.",
 		description:
-			"Use this boilerplate to showcase your skills, selected projects, experience, and contact links. Replace the content in src/data/portfolio.ts with your own.",
-		location: "Your City, Country",
+			"I turn ideas into responsive React experiences with strong attention to UI details, accessibility, and performance.",
+		location: "Jakarta, Indonesia",
 		resumeUrl: "/CV.pdf",
+		photoUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=840&q=80",
 	},
 	socials: [
-		{ label: "Email", href: "mailto:hello@example.com" },
 		{ label: "LinkedIn", href: "https://linkedin.com/in/username" },
 		{ label: "GitHub", href: "https://github.com/username" },
+		{ label: "Instagram", href: "https://instagram.com/username" },
 	],
-	skills: ["Brand Strategy", "Web Design", "React", "TypeScript", "UI/UX", "Content"],
-	projects: [
-		{
-			title: "Project One",
-			description: "A short description about the result, impact, and your role in this project.",
-			tags: ["Landing Page", "Design", "Development"],
-			link: "#",
-		},
-		{
-			title: "Project Two",
-			description: "Showcase another featured work with measurable outcomes or highlights.",
-			tags: ["Dashboard", "React", "Product"],
-			link: "#",
-		},
-		{
-			title: "Project Three",
-			description: "Add case studies, client work, open-source projects, or personal experiments.",
-			tags: ["Portfolio", "Branding", "Web"],
-			link: "#",
-		},
-	],
+	skills: ["React", "TypeScript", "Next.js", "UI Design", "Git", "Figma"],
 	experience: [
 		{
-			role: "Your Current Role",
-			company: "Company / Client",
-			period: "2024 - Present",
-			description: "Describe your main responsibility, collaboration, and impact.",
+			role: "Frontend Developer Intern",
+			company: "Digital Studio",
+			period: "2025",
+			description: "Built reusable UI components and improved landing page performance with the product team.",
 		},
 		{
-			role: "Previous Role",
-			company: "Company / Client",
-			period: "2022 - 2024",
-			description: "Add relevant achievements that support your personal brand.",
+			role: "Freelance Web Developer",
+			company: "Local Brands",
+			period: "2024 - 2025",
+			description: "Delivered responsive portfolios and business websites focused on clarity and conversion.",
 		},
+		{
+			role: "UI/UX Division",
+			company: "Campus Organization",
+			period: "2023 - 2024",
+			description: "Designed event pages, social assets, and design systems for student campaigns.",
+		},
+	],
+	projects: [
+		{
+			title: "Campus Career Portal",
+			description: "A focused job discovery interface for students with saved roles, filters, and a clean application flow.",
+			tags: ["React", "TypeScript", "UI Design"],
+			liveUrl: "#",
+			githubUrl: "#",
+			imageUrl: "https://images.unsplash.com/photo-1551650975-87deedd944c3?auto=format&fit=crop&w=1200&q=80",
+		},
+	],
+	achievements: [
+		{ title: "Award", value: "Best Final Project", detail: "Recognized for practical UI execution and presentation clarity." },
+		{ title: "Certification", value: "Frontend Development", detail: "Completed React, web accessibility, and responsive layout modules." },
+		{ title: "Competition", value: "Top 10 UI Challenge", detail: "Created a mobile-first prototype for a campus service platform." },
 	],
 	contact: {
 		email: "hello@example.com",
 		phone: "+62 812 0000 0000",
-		cta: "Have a project in mind? Let’s talk about how I can help.",
+		cta: "Let’s Work Together",
 	},
 } as const;

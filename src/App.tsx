@@ -1,32 +1,143 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
+
 import { portfolio } from "@/data/portfolio";
 
-const navItems = ["about", "projects", "experience", "contact"];
+const sections = [
+	{ id: "hero", label: "Hero" },
+	{ id: "about", label: "About" },
+	{ id: "skills", label: "Skills" },
+	{ id: "experience", label: "Experience" },
+	{ id: "projects", label: "Projects" },
+	{ id: "achievements", label: "Achievements" },
+	{ id: "contact", label: "Contact" },
+] as const;
+
+const transitionMs = 800;
 
 function App() {
+	const [activeIndex, setActiveIndex] = useState(0);
+	const [isTransitioning, setIsTransitioning] = useState(false);
+	const [isReducedMotion, setIsReducedMotion] = useState(false);
+	const activeRef = useRef(activeIndex);
+	const transitionRef = useRef(false);
+	const touchStartY = useRef(0);
+	const touchDeltaY = useRef(0);
+
+	useEffect(() => {
+		activeRef.current = activeIndex;
+	}, [activeIndex]);
+
+	useEffect(() => {
+		const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+		const update = () => setIsReducedMotion(media.matches);
+		update();
+		media.addEventListener("change", update);
+		return () => media.removeEventListener("change", update);
+	}, []);
+
+	const goToSection = useCallback(
+		(nextIndex: number) => {
+			const safeIndex = Math.max(0, Math.min(sections.length - 1, nextIndex));
+			if (safeIndex === activeRef.current) return;
+
+			if (isReducedMotion) {
+				setActiveIndex(safeIndex);
+				document.getElementById(sections[safeIndex].id)?.scrollIntoView({ block: "start" });
+				return;
+			}
+
+			if (transitionRef.current) return;
+			transitionRef.current = true;
+			setIsTransitioning(true);
+			setActiveIndex(safeIndex);
+			window.setTimeout(() => {
+				transitionRef.current = false;
+				setIsTransitioning(false);
+			}, transitionMs);
+		},
+		[isReducedMotion],
+	);
+
+	useEffect(() => {
+		if (isReducedMotion) return undefined;
+
+		const handleWheel = (event: WheelEvent) => {
+			event.preventDefault();
+			if (Math.abs(event.deltaY) < 10) return;
+			goToSection(activeRef.current + (event.deltaY > 0 ? 1 : -1));
+		};
+
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (["ArrowDown", "PageDown"].includes(event.key)) {
+				event.preventDefault();
+				goToSection(activeRef.current + 1);
+			}
+			if (["ArrowUp", "PageUp"].includes(event.key)) {
+				event.preventDefault();
+				goToSection(activeRef.current - 1);
+			}
+		};
+
+		const handleTouchStart = (event: TouchEvent) => {
+			touchStartY.current = event.touches[0]?.clientY ?? 0;
+			touchDeltaY.current = 0;
+		};
+
+		const handleTouchMove = (event: TouchEvent) => {
+			touchDeltaY.current = (event.touches[0]?.clientY ?? touchStartY.current) - touchStartY.current;
+			event.preventDefault();
+		};
+
+		const handleTouchEnd = () => {
+			if (Math.abs(touchDeltaY.current) < 50) return;
+			goToSection(activeRef.current + (touchDeltaY.current < 0 ? 1 : -1));
+		};
+
+		window.addEventListener("wheel", handleWheel, { passive: false });
+		window.addEventListener("keydown", handleKeyDown);
+		window.addEventListener("touchstart", handleTouchStart, { passive: true });
+		window.addEventListener("touchmove", handleTouchMove, { passive: false });
+		window.addEventListener("touchend", handleTouchEnd);
+
+		return () => {
+			window.removeEventListener("wheel", handleWheel);
+			window.removeEventListener("keydown", handleKeyDown);
+			window.removeEventListener("touchstart", handleTouchStart);
+			window.removeEventListener("touchmove", handleTouchMove);
+			window.removeEventListener("touchend", handleTouchEnd);
+		};
+	}, [goToSection, isReducedMotion]);
+
 	return (
-		<main className="min-h-screen bg-slate-950 text-white">
-			<Navbar />
-			<Hero />
-			<About />
-			<Projects />
-			<Experience />
-			<Contact />
+		<main className="portfolio-shell bg-[#0A0A0A] text-white" style={{ "--active-section": activeIndex } as CSSProperties}>
+			<Navbar activeIndex={activeIndex} onNavigate={goToSection} />
+			<div className="sections-track">
+				<Hero active={activeIndex === 0} onViewProjects={() => goToSection(4)} />
+				<About active={activeIndex === 1} />
+				<Skills active={activeIndex === 2} />
+				<Experience active={activeIndex === 3} />
+				<Projects active={activeIndex === 4} />
+				<Achievements active={activeIndex === 5} />
+				<Contact active={activeIndex === 6} />
+			</div>
+			<DotNavigation activeIndex={activeIndex} isTransitioning={isTransitioning} onNavigate={goToSection} />
 		</main>
 	);
 }
 
-function Navbar() {
+function Navbar({ activeIndex, onNavigate }: { activeIndex: number; onNavigate: (index: number) => void }) {
 	return (
-		<header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/80 backdrop-blur">
-			<nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-				<a href="#hero" className="font-semibold tracking-tight">
+		<header className={`site-nav ${activeIndex > 0 ? "site-nav--solid" : ""}`}>
+			<nav className="container-shell flex items-center justify-between py-5">
+				<button className="font-bold tracking-tight" type="button" onClick={() => onNavigate(0)}>
 					{portfolio.profile.name}
-				</a>
-				<div className="hidden gap-6 text-sm text-slate-300 sm:flex">
-					{navItems.map((item) => (
-						<a key={item} href={`#${item}`} className="capitalize transition hover:text-white">
-							{item}
-						</a>
+				</button>
+				<div className="hidden items-center gap-6 text-sm text-zinc-300 md:flex">
+					{sections.slice(1).map((section, index) => (
+						<button key={section.id} className="transition hover:text-[#00D4FF]" type="button" onClick={() => onNavigate(index + 1)}>
+							{section.label}
+						</button>
 					))}
 				</div>
 			</nav>
@@ -34,37 +145,71 @@ function Navbar() {
 	);
 }
 
-function Hero() {
+function DotNavigation({ activeIndex, isTransitioning, onNavigate }: { activeIndex: number; isTransitioning: boolean; onNavigate: (index: number) => void }) {
 	return (
-		<section id="hero" className="mx-auto grid min-h-[calc(100vh-73px)] max-w-6xl items-center gap-10 px-6 py-20 lg:grid-cols-[1.15fr_0.85fr]">
-			<div>
-				<p className="mb-4 text-sm font-medium uppercase tracking-[0.35em] text-cyan-300">
-					{portfolio.profile.role}
-				</p>
-				<h1 className="max-w-4xl text-5xl font-bold tracking-tight text-white md:text-7xl">
-					{portfolio.profile.tagline}
-				</h1>
-				<p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-					{portfolio.profile.description}
-				</p>
-				<div className="mt-8 flex flex-wrap gap-4">
-					<a className="rounded-full bg-cyan-300 px-6 py-3 font-semibold text-slate-950 transition hover:bg-cyan-200" href="#projects">
+		<nav className="dot-nav" aria-label="Section navigation">
+			{sections.map((section, index) => (
+				<button
+					key={section.id}
+					aria-label={`Go to ${section.label}`}
+					aria-current={activeIndex === index ? "true" : undefined}
+					className={`dot ${activeIndex === index ? "dot--active" : ""} ${isTransitioning && activeIndex === index ? "dot--pulse" : ""}`}
+					type="button"
+					onClick={() => onNavigate(index)}
+				/>
+			))}
+		</nav>
+	);
+}
+
+function Hero({ active, onViewProjects }: { active: boolean; onViewProjects: () => void }) {
+	return (
+		<section id="hero" className={`full-section grid place-items-center text-center ${active ? "is-active" : ""}`} aria-labelledby="hero-title">
+			<div className="container-shell section-grid">
+				<div className="col-span-12">
+					<h1 id="hero-title" className="stagger text-[clamp(2.5rem,8vw,4.5rem)] font-bold leading-[1.2] tracking-tight">
+						{portfolio.profile.name}
+					</h1>
+					<p className="stagger mt-4 text-xl font-semibold text-[#00D4FF] md:text-2xl">{portfolio.profile.role}</p>
+					<p className="stagger mx-auto mt-6 max-w-2xl text-lg leading-8 text-zinc-400">{portfolio.profile.tagline}</p>
+					<button className="primary-button stagger mt-9" type="button" onClick={onViewProjects}>
 						View Projects
-					</a>
-					<a className="rounded-full border border-white/15 px-6 py-3 font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-300" href={portfolio.profile.resumeUrl}>
-						Download CV
-					</a>
+					</button>
+					<div className="mouse-cue stagger mx-auto mt-14" aria-hidden="true" />
 				</div>
 			</div>
-			<div className="rounded-[2rem] border border-white/10 bg-white/5 p-8 shadow-2xl shadow-cyan-950/30">
-				<p className="text-sm uppercase tracking-[0.3em] text-slate-400">Available for</p>
-				<h2 className="mt-4 text-3xl font-semibold">Freelance, collaboration, and full-time opportunities.</h2>
-				<div className="mt-8 grid gap-3 text-slate-300">
-					<p>{portfolio.profile.location}</p>
-					{portfolio.socials.map((social) => (
-						<a key={social.label} href={social.href} className="transition hover:text-cyan-300">
-							{social.label} →
-						</a>
+		</section>
+	);
+}
+
+function About({ active }: { active: boolean }) {
+	return (
+		<section id="about" className={`full-section ${active ? "is-active" : ""}`} aria-labelledby="about-title">
+			<div className="container-shell section-grid items-center">
+				<div className="stagger col-span-12 lg:col-span-5">
+					<img className="profile-photo" src={portfolio.profile.photoUrl} alt={portfolio.profile.name} loading="lazy" />
+				</div>
+				<div className="col-span-12 lg:col-span-7">
+					<p className="section-label stagger">About</p>
+					<h2 id="about-title" className="section-title stagger mt-4">I design and build interfaces that help users move faster.</h2>
+					<p className="stagger mt-6 max-w-2xl text-lg leading-8 text-zinc-400">{portfolio.profile.description}</p>
+					<p className="stagger mt-4 max-w-2xl text-lg leading-8 text-zinc-400">My strongest stack is React, TypeScript, Figma, and Git for turning UI ideas into production-ready pages.</p>
+					<a className="primary-button stagger mt-8 inline-flex" href={portfolio.profile.resumeUrl}>Download CV</a>
+				</div>
+			</div>
+		</section>
+	);
+}
+
+function Skills({ active }: { active: boolean }) {
+	return (
+		<section id="skills" className={`full-section grid place-items-center ${active ? "is-active" : ""}`} aria-labelledby="skills-title">
+			<div className="container-shell text-center">
+				<p className="section-label stagger">Skills</p>
+				<h2 id="skills-title" className="section-title stagger mx-auto mt-4">Tools I use to build modern web products.</h2>
+				<div className="mx-auto mt-10 grid max-w-4xl grid-cols-2 gap-4 md:grid-cols-3 md:gap-6">
+					{portfolio.skills.map((skill) => (
+						<div key={skill} className="skill-block stagger">{skill}</div>
 					))}
 				</div>
 			</div>
@@ -72,46 +217,21 @@ function Hero() {
 	);
 }
 
-function About() {
+function Experience({ active }: { active: boolean }) {
 	return (
-		<section id="about" className="mx-auto max-w-6xl px-6 py-24">
-			<p className="section-label">About</p>
-			<div className="mt-6 grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
-				<h2 className="section-title">A simple portfolio template for any professional.</h2>
-				<div>
-					<p className="text-lg leading-8 text-slate-300">
-						Use this section to introduce yourself, your process, and the value you bring. Keep it concise and focused on outcomes.
-					</p>
-					<div className="mt-8 flex flex-wrap gap-3">
-						{portfolio.skills.map((skill) => (
-							<span key={skill} className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200">
-								{skill}
-							</span>
-						))}
-					</div>
+		<section id="experience" className={`full-section ${active ? "is-active" : ""}`} aria-labelledby="experience-title">
+			<div className="container-shell section-grid items-center">
+				<div className="col-span-12 lg:col-span-5">
+					<p className="section-label stagger">Experience</p>
+					<h2 id="experience-title" className="section-title stagger mt-4">A growing track record through real collaboration.</h2>
 				</div>
-			</div>
-		</section>
-	);
-}
-
-function Projects() {
-	return (
-		<section id="projects" className="border-y border-white/10 bg-white/[0.03]">
-			<div className="mx-auto max-w-6xl px-6 py-24">
-				<p className="section-label">Projects</p>
-				<h2 className="section-title mt-6">Selected work</h2>
-				<div className="mt-10 grid gap-6 md:grid-cols-3">
-					{portfolio.projects.map((project) => (
-						<a key={project.title} href={project.link} className="rounded-3xl border border-white/10 bg-slate-950 p-6 transition hover:-translate-y-1 hover:border-cyan-300/50">
-							<h3 className="text-xl font-semibold">{project.title}</h3>
-							<p className="mt-4 text-sm leading-6 text-slate-300">{project.description}</p>
-							<div className="mt-6 flex flex-wrap gap-2">
-								{project.tags.map((tag) => (
-									<span key={tag} className="rounded-full bg-cyan-300/10 px-3 py-1 text-xs text-cyan-200">{tag}</span>
-								))}
-							</div>
-						</a>
+				<div className="timeline col-span-12 lg:col-span-7">
+					{portfolio.experience.map((item) => (
+						<article key={`${item.role}-${item.company}`} className="timeline-item stagger">
+							<span>{item.period}</span>
+							<h3>{item.role}</h3>
+							<p>{item.company} — {item.description}</p>
+						</article>
 					))}
 				</div>
 			</div>
@@ -119,38 +239,65 @@ function Projects() {
 	);
 }
 
-function Experience() {
+function Projects({ active }: { active: boolean }) {
+	const project = portfolio.projects[0];
+
 	return (
-		<section id="experience" className="mx-auto max-w-6xl px-6 py-24">
-			<p className="section-label">Experience</p>
-			<h2 className="section-title mt-6">Career highlights</h2>
-			<div className="mt-10 grid gap-4">
-				{portfolio.experience.map((item) => (
-					<div key={`${item.role}-${item.company}`} className="rounded-3xl border border-white/10 bg-white/5 p-6">
-						<div className="flex flex-wrap items-start justify-between gap-3">
-							<div>
-								<h3 className="text-xl font-semibold">{item.role}</h3>
-								<p className="text-cyan-200">{item.company}</p>
-							</div>
-							<span className="text-sm text-slate-400">{item.period}</span>
-						</div>
-						<p className="mt-4 text-slate-300">{item.description}</p>
+		<section id="projects" className={`full-section ${active ? "is-active" : ""}`} aria-labelledby="projects-title">
+			<div className="container-shell section-grid items-center">
+				<div className="stagger col-span-12 lg:col-span-7">
+					<img className="project-image" src={project.imageUrl} alt={project.title} loading="lazy" />
+				</div>
+				<div className="col-span-12 lg:col-span-5">
+					<p className="section-label stagger">Featured Project</p>
+					<h2 id="projects-title" className="section-title stagger mt-4">{project.title}</h2>
+					<p className="stagger mt-6 text-lg leading-8 text-zinc-400">{project.description}</p>
+					<div className="stagger mt-6 flex flex-wrap gap-2">
+						{project.tags.map((tag) => <span key={tag} className="tag">{tag}</span>)}
 					</div>
-				))}
+					<div className="stagger mt-8 flex flex-wrap gap-4">
+						<a className="primary-button" href={project.liveUrl}>View Live</a>
+						<a className="ghost-button" href={project.githubUrl}>View Github</a>
+					</div>
+				</div>
 			</div>
 		</section>
 	);
 }
 
-function Contact() {
+function Achievements({ active }: { active: boolean }) {
 	return (
-		<section id="contact" className="mx-auto max-w-6xl px-6 py-24">
-			<div className="rounded-[2rem] bg-cyan-300 p-8 text-slate-950 md:p-12">
-				<p className="text-sm font-semibold uppercase tracking-[0.3em]">Contact</p>
-				<h2 className="mt-4 max-w-3xl text-4xl font-bold tracking-tight md:text-5xl">{portfolio.contact.cta}</h2>
-				<div className="mt-8 flex flex-wrap gap-4">
-					<a className="rounded-full bg-slate-950 px-6 py-3 font-semibold text-white" href={`mailto:${portfolio.contact.email}`}>Email me</a>
-					<a className="rounded-full border border-slate-950/20 px-6 py-3 font-semibold" href={`tel:${portfolio.contact.phone}`}>{portfolio.contact.phone}</a>
+		<section id="achievements" className={`full-section grid place-items-center ${active ? "is-active" : ""}`} aria-labelledby="achievements-title">
+			<div className="container-shell text-center">
+				<p className="section-label stagger">Achievements</p>
+				<h2 id="achievements-title" className="section-title stagger mx-auto mt-4">Signals of consistency, learning, and initiative.</h2>
+				<div className="mt-10 grid gap-5 md:grid-cols-3">
+					{portfolio.achievements.map((item) => (
+						<article key={item.title} className="achievement-card stagger">
+							<p>{item.title}</p>
+							<h3>{item.value}</h3>
+							<span>{item.detail}</span>
+						</article>
+					))}
+				</div>
+			</div>
+		</section>
+	);
+}
+
+function Contact({ active }: { active: boolean }) {
+	return (
+		<section id="contact" className={`full-section grid place-items-center text-center ${active ? "is-active" : ""}`} aria-labelledby="contact-title">
+			<div className="container-shell">
+				<p className="section-label stagger">Contact</p>
+				<h2 id="contact-title" className="stagger mt-4 text-[clamp(2rem,6vw,4.5rem)] font-bold leading-[1.2]">{portfolio.contact.cta}</h2>
+				<form className="stagger mx-auto mt-10 grid max-w-xl gap-4" action={`mailto:${portfolio.contact.email}`}>
+					<input aria-label="Name" name="name" placeholder="Name" />
+					<input aria-label="Email" name="email" placeholder="Email" type="email" />
+					<button className="primary-button justify-center" type="submit">Send Message</button>
+				</form>
+				<div className="stagger mt-8 flex justify-center gap-6 text-zinc-400">
+					{portfolio.socials.map((social) => <a key={social.label} className="hover:text-[#00D4FF]" href={social.href}>{social.label}</a>)}
 				</div>
 			</div>
 		</section>
